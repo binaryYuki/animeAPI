@@ -103,7 +103,7 @@ async def store_webhook_data(data: dict):
             await session.close()
 
 
-@authRoute.api_route('/hook', methods=['POST', 'PUT'])
+@authRoute.api_route('/hook', methods=['POST'])
 async def logtoEventHandler(request: Request, background_tasks: BackgroundTasks):
     """
 

@@ -89,6 +89,15 @@ class VodSub(Base):
             "vod_info_id": self.vod_info_id
         }
 
+    async def save(self):
+        """
+        保存数据
+        """
+        async with SessionLocal() as session:
+            async with session.begin():
+                session.add(self)
+                await session.commit()
+
 
 class VodInfo(Base):
     __tablename__ = "vod_info"
@@ -297,3 +306,30 @@ class WebHookStorage(Base):
 
     def __repr__(self):
         return f"<WebHookStorage(hook_id='{self.hook_id}', event='{self.event}')>"
+
+
+async def create_vod_sub(data):
+    """
+    create vod sub
+    :param data:
+    :return:
+    """
+    async with SessionLocal() as session:
+        async with session.begin():
+            # 查询用户是否存在
+            stmt = select(User).where(User.id == data['sub_by'])
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if user is None:
+                # 如果不存在，则会导致数据库错误
+                raise ValueError(f"User with id {data['sub_by']} does not exist")
+
+            # 如果存在，则插入 VodSub 对象
+            vod_sub = VodSub(sub_id=data['sub_id'], sub_by=data['sub_by'])
+            session.add(vod_sub)
+            await session.commit()
+            # 重新从数据库中查询 VodSub 对象
+            stmt = select(VodSub).where(VodSub.sub_id == data['sub_id'])
+            data = await session.execute(stmt)
+            return data.scalar_one_or_none()

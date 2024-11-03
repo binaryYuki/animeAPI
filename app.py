@@ -1,3 +1,4 @@
+import binascii
 import logging
 import os
 import random
@@ -6,7 +7,6 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-import binascii
 import httpx
 import redis.asyncio as redis
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -122,7 +122,7 @@ async def lifespan(_: FastAPI):
 
 
 # 禁用 openapi.json
-app = FastAPI(lifespan=lifespan, title="Anime API", version="1.1.3.beta", openapi_url=None)
+app = FastAPI(lifespan=lifespan, title="Anime API", version="1.1.4", openapi_url=None)
 
 app.include_router(authRoute)
 app.include_router(userRoute)

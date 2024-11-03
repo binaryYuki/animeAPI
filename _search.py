@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+from http.client import HTTPException
 from time import time
 
 import httpx
@@ -32,14 +33,13 @@ async def checkSum(data):
     try:
         timestamp = data.get('timestamp')
         if not await checkTimeStamp(timestamp):
-            return JSONResponse({"error": "Invalid Request, timestamp expired"}, status_code=400)
+            raise HTTPException("Invalid Request, timestamp expired")
     except Exception as e:
-        return JSONResponse({"error": "Invalid Request, missing param: timestamp"}, status_code=400,
-                            headers={"X-Error": str(e)})
+        raise HTTPException("Invalid Request")
     try:
         data = await decryptData(data.get('data'))
     except Exception as e:
-        return JSONResponse({"error": "Invalid Request, invalid data"}, status_code=400)
+        raise HTTPException("Invalid Request")
     return json.loads(data)
 
 
@@ -149,22 +149,28 @@ async def search(request: Request, background_tasks: BackgroundTasks):
                         name='keyword')
 async def keyword(request: Request):
     data = await request.json()
-    data = await checkSum(data)
-    keyword = data.get('keyword')
-    if keyword == '' or keyword == 'your keyword':
+    try:
+        data = await checkSum(data)
+    except HTTPException as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logging.info(f"Invalid Request: {data}, {e}")
+        return JSONResponse({"error": "Invalid Request"}, status_code=400)
+    _keyword = data.get('keyword')
+    if _keyword == '' or _keyword == 'your keyword':
         return JSONResponse({}, status_code=200)
-    if keyword == 'Yuki Forever💗':
+    if _keyword == 'Yuki Forever💗':
         return JSONResponse(
             {"code": 0, "data": [{"type": "vod", "words": ["每一个未来的瞬间", "都有你的名字", "Yuki Forever💗"]}],
              "msg": "ok"}, status_code=200)
-    redis_key = f"keyword_{datetime.datetime.now().strftime('%Y-%m-%d')}_{keyword}"
+    redis_key = f"keyword_{datetime.datetime.now().strftime('%Y-%m-%d')}_{_keyword}"
     try:
         if await redis_get_key(redis_key):
             data = await redis_get_key(redis_key)
             data = json.loads(data)
             data["msg"] = "cached"
         else:
-            data = await link_keywords(keyword)
+            data = await link_keywords(_keyword)
             await redis_set_key(redis_key, json.dumps(data), ex=86400)  # 缓存一天
     except Exception as e:
         logging.error("Error: " + str(e), stack_info=True)
@@ -202,7 +208,7 @@ async def detail(request: Request):
     # direct play https://player.viloud.tv/embed/play?url=https://www.olevod.com/vod/detail/5f4b3b7b7f3c1d0001b2b3b3&autoplay=1
 
 
-@searchRouter.api_route('/report/keyword', methods=['POST', 'PUT'], name='report_keyword',
+@searchRouter.api_route('/report/keyword', methods=['POST'], name='report_keyword',
                         dependencies=[Depends(RateLimiter(times=1, seconds=3))])
 async def report_keyword(request: Request):
     """
