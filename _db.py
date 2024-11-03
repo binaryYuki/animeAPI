@@ -333,3 +333,31 @@ async def create_vod_sub(data):
             stmt = select(VodSub).where(VodSub.sub_id == data['sub_id'])
             data = await session.execute(stmt)
             return data.scalar_one_or_none()
+
+
+async def unsubscribe_vod_sub(data):
+    """
+    unsubscribe vod sub
+    :param data:
+    :return:
+    """
+    async with SessionLocal() as session:
+        async with session.begin():
+            # 查询用户是否存在
+            stmt = select(User).where(User.id == data['sub_by'])
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if user is None:
+                # 如果不存在，则会导致数据库错误
+                raise ValueError(f"User with id {data['sub_by']} does not exist")
+
+            # 如果存在，则删除 VodSub 对象
+            stmt = select(VodSub).where(VodSub.sub_id == data['sub_id'])
+            result = await session.execute(stmt)
+            vod_sub = result.scalar_one_or_none()
+            if vod_sub:
+                session.delete(vod_sub)
+                await session.commit()
+                return True
+            return False

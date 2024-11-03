@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from _crypto import decryptData
-from _db import create_vod_sub
+from _db import create_vod_sub, unsubscribe_vod_sub
 
 app = FastAPI()
 
@@ -48,3 +48,21 @@ async def subscribe(request: Request):
     data = await decryptData(data)
     sub = create_vod_sub(data)
     return JSONResponse(status_code=200, content={'msg': 'success', 'db_data': sub})
+
+
+@userRoute.api_route('/unsubscribe', methods=['POST'])
+async def unsubscribe(request: Request):
+    """
+    取消订阅接口
+    :return:
+    """
+    try:
+        data = await request.json()
+    except Exception as e:
+        return JSONResponse(status_code=400, content={'error': 'Invalid JSON data'})
+    if not checkSubSum(data):
+        return JSONResponse(status_code=400, content={'error': 'Invalid JSON data'})
+    data = await decryptData(data)
+    # 取消订阅
+    sub = unsubscribe_vod_sub(data)
+    return JSONResponse(status_code=200, content={'msg': 'success', 'exec_status': sub})
