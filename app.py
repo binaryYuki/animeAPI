@@ -1,4 +1,3 @@
-import binascii
 import logging
 import os
 import random
@@ -7,6 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
+import binascii
 import httpx
 import redis.asyncio as redis
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -162,7 +162,7 @@ async def index():
     """
     version_suffix = os.getenv("COMMIT_ID", "")[:8]
     info = {
-        "version": "v1.1.4-" + version_suffix,
+        "version": "v2.0-prod-" + version_suffix,
         "build_at": os.environ.get("BUILD_AT", ""),
         "author": "binaryYuki <noreply.tzpro.xyz>",
         "arch": subprocess.run(['uname', '-m'], stdout=subprocess.PIPE).stdout.decode().strip(),
