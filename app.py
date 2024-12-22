@@ -7,18 +7,9 @@ import uuid
 from contextlib import asynccontextmanager
 
 import binascii
+
 import httpx
 import redis.asyncio as redis
-from asgi_correlation_id import CorrelationIdMiddleware
-from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi_limiter import FastAPILimiter
-from fastapi_utils.tasks import repeat_every
-from starlette.middleware.sessions import SessionMiddleware
-
 from _auth import authRoute
 from _cronjobs import keepMySQLAlive, keerRedisAlive, pushTaskExecQueue
 from _crypto import cryptoRouter, init_crypto
@@ -27,6 +18,15 @@ from _redis import get_keys_by_pattern, redis_client, set_key as redis_set_key
 from _search import searchRouter
 from _trend import trendingRoute
 from _user import userRoute
+from asgi_correlation_id import CorrelationIdMiddleware
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from fastapi_limiter import FastAPILimiter
+from fastapi_utils.tasks import repeat_every
+from starlette.middleware.sessions import SessionMiddleware
 
 load_dotenv()
 loglevel = os.getenv("LOG_LEVEL", "ERROR")
@@ -155,7 +155,7 @@ async def test():
 
 
 @app.get('/')
-async def index():
+async def index(request: Request):
     """
     首页
     :return:
@@ -163,27 +163,36 @@ async def index():
     version_suffix = os.getenv("COMMIT_ID", "")[:8]
     info = {
         "version": "v2.0-prod-" + version_suffix,
-        "build_at": os.environ.get("BUILD_AT", ""),
+        "buildAt": os.environ.get("BUILD_AT", ""),
         "author": "binaryYuki <noreply.tzpro.xyz>",
         "arch": subprocess.run(['uname', '-m'], stdout=subprocess.PIPE).stdout.decode().strip(),
-        "commit": os.getenv("COMMIT_ID", ""),
-        "instance_id": instanceID,
+        "commit": os.getenv("COMMIT_ID", "")[:8],
+        "instance-id": instanceID[:8],
+        # x-request-id:
+        "request-id": request.headers.get("x-request-id:", ""),
+        "ray-id": request.headers.get("cf-ray", ""),
+        "protocol": request.headers.get("X-Forwarded-Proto", ""),
+        "ip": request.headers.get("Cf-Connecting-Ip", ""),
+        "dataCenter": request.headers.get("Cf-Ipcity", ""),
+        "code": 200,
+        "message": "OK"
     }
 
-    # 转为 pre defined html
-    html = """
-    <pre>
-    <code>
-    Version: {version}
-    Build At: {build_at}
-    Author: {author}
-    Arch: {arch}
-    Commit: {commit}
-    Instance ID: {instance_id}
-    </code>
-    </pre>
-    """.format(**info)
-    return HTMLResponse(content=html)
+    # # 转为 pre defined html
+    # html = """
+    # <pre>
+    # <code>
+    # Version: {version}
+    # Build At: {build_at}
+    # Author: {author}
+    # Arch: {arch}
+    # Commit: {commit}
+    # Instance ID: {instance_id}
+    # </code>
+    # </pre>
+    # """.format(**info)
+    # return HTMLResponse(content=html)
+    return JSONResponse(content=info)
 
 
 @app.api_route('/healthz', methods=['GET'])
