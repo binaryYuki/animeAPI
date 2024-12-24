@@ -40,9 +40,8 @@ COPY requirements.txt .
 
 # 安装依赖时禁用缓存以减少镜像体积
 RUN uv venv -p 3.12 && \
-    . .venv/bin/activate && \
-    uv pip install --no-cache-dir --upgrade pip && \
-    uv pip sync requirements.txt --no-cache-dir
+    uv pip install --upgrade pip && \
+    uv pip sync requirements.txt
 
 # 复制应用程序代码
 COPY . .
