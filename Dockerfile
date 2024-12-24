@@ -1,6 +1,5 @@
 # Start from the base image
-ARG PYTHON_VERSION=3.12.4
-FROM python:${PYTHON_VERSION}-slim AS base
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS base
 
 # Define build arguments and environment variables
 ARG COMMIT_ID
@@ -8,12 +7,6 @@ ENV COMMIT_ID=${COMMIT_ID}
 
 ARG BUILD_AT
 ENV BUILD_AT=${BUILD_AT}
-
-# Prevents Python from writing pyc files.
-ENV PYTHONDONTWRITEBYTECODE=1
-
-# Keeps Python from buffering stdout and stderr.
-ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
@@ -40,9 +33,6 @@ FROM base AS builder
 
 WORKDIR /app
 
-# Install uv package
-RUN pip install uv
-
 # Create a virtual environment and install dependencies
 RUN uv venv -p 3.12 && \
     uv pip install --upgrade pip
@@ -50,8 +40,7 @@ RUN uv venv -p 3.12 && \
 # Leverage a cache mount to speed up subsequent builds
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    . .venv/bin/activate && uv pip sync requirements.txt && \
-    uv pip install gunicorn
+    . .venv/bin/activate && uv pip sync requirements.txt
 
 # Copy the source code into the container in the final stage
 FROM base AS final

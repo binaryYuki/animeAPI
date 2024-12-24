@@ -29,7 +29,7 @@ httpx==0.27.0
 idna==3.7
 importlib-resources==6.4.3
 itsdangerous==2.2.0
-jinja2==3.1.4
+jinja2==3.1.5
 limits==3.13.0
 markdown-it-py==3.0.0
 markupsafe==3.0.2
