@@ -9,7 +9,7 @@ on:
 
 jobs:
   steps:
-    - name: Deploy Application
+    - name: deploy
       env:
         DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
         DOKPLOY_AUTH_TOKEN: ${{ secrets.DOKPLOY_AUTH_TOKEN }}
