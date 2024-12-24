@@ -120,6 +120,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: docker
+    steps:
       - name: Deploy Application
         env:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
