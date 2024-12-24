@@ -1,0 +1,45 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  steps:
+    - name: Deploy Application
+      env:
+        DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+        DOKPLOY_AUTH_TOKEN: ${{ secrets.DOKPLOY_AUTH_TOKEN }}
+        DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
+      run: |
+        # 调试输出环境变量（注意避免泄露敏感信息）
+        echo "DOKPLOY_URL: $DOKPLOY_URL"
+        echo "DOKPLOY_APPLICATION_ID: $DOKPLOY_APPLICATION_ID"
+        
+        # 发送请求并捕获响应和状态码
+        response=$(curl -X 'POST' \
+          "$DOKPLOY_URL/api/application.redeploy" \
+          -H 'accept: application/json' \
+          -H 'Content-Type: application/json' \
+          -H "Authorization: Bearer $DOKPLOY_AUTH_TOKEN" \
+          -d "{\"applicationId\": \"$DOKPLOY_APPLICATION_ID\"}" \
+          -w "%{http_code}" \
+          -o response_body.txt \
+          -s)
+        
+        # 输出响应体和状态码用于调试
+        echo "HTTP Response Code: $response"
+        echo "Response Body:"
+        cat response_body.txt
+        
+        # 检查响应状态码
+        if [ "$response" -ne 200 ]; then
+          echo "Deployment failed with status code: $response"
+          echo "Response body:"
+          cat response_body.txt
+          exit 1
+        fi
+        
+        echo "Deployment succeeded!"
