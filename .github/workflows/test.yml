@@ -30,7 +30,7 @@ jobs:
             -H 'accept: application/json' \
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer $DOKPLOY_AUTH_TOKEN" \
-            -H "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1.1 Mobile/15E148 Safari/604.1" \
+            -H "User-Agent: TZPro/1.0 (like github-actions)" \
             -d "{\"applicationId\": \"$DOKPLOY_APPLICATION_ID\"}" \
             -w "%{http_code}" \
             -o response_body.txt \
