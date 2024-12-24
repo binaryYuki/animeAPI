@@ -163,13 +163,12 @@ async def index(request: Request):
     """
     version_suffix = os.getenv("COMMIT_ID", "")[:8]
     info = {
-        "version": "v2.0-prod-" + version_suffix,
+        "version": "v2.1-prod-" + version_suffix,
         "buildAt": os.environ.get("BUILD_AT", ""),
         "author": "binaryYuki <noreply.tzpro.xyz>",
         "arch": subprocess.run(['uname', '-m'], stdout=subprocess.PIPE).stdout.decode().strip(),
         "commit": os.getenv("COMMIT_ID", "")[:8],
         "instance-id": instanceID[:8],
-        # x-request-id:
         "request-id": request.headers.get("x-request-id", ""),
         "ray-id": request.headers.get("cf-ray", ""),
         "protocol": request.headers.get("X-Forwarded-Proto", ""),
