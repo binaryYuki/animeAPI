@@ -39,9 +39,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # 安装依赖时禁用缓存以减少镜像体积
+RUN pip install uv
 RUN uv venv -p 3.12 && \
-    uv pip install --upgrade pip && \
-    uv pip sync requirements.txt
+    uv pip install --no-cache-dir --upgrade pip && \
+    uv pip sync requirements.txt --no-cache-dir
 
 # 复制应用程序代码
 COPY . .
