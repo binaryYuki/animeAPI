@@ -26,21 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmariadb-dev-compat \
     libmariadb-dev \
     pkg-config && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Setup Python environment in a distinct build stage
-FROM base AS builder
-
-WORKDIR /app
-
-# Create a virtual environment and install dependencies
-RUN uv venv -p 3.12 && \
-    uv pip install --upgrade pip
-
-# Leverage a cache mount to speed up subsequent builds
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    . .venv/bin/activate && uv pip sync requirements.txt
 
 # Copy the source code into the container in the final stage
 FROM base AS final
@@ -48,18 +36,17 @@ FROM base AS final
 # Set working directory
 WORKDIR /app
 
-# Copy the prepared virtual environment and source code
-COPY --from=builder /app/.venv /app/.venv
+# Copy the source code into the container
 COPY . .
 
-# Change ownership to the appuser
 RUN chown -R appuser:appuser /app
-
 # Switch to the non-privileged user to run the application.
 USER appuser
 
 # Expose the port that the application listens on.
 EXPOSE 8000
 
+RUN uv sync
+
 # Run the application
-CMD [".venv/bin/gunicorn", "app:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+CMD ["uv", "run", "--with", "gunicorn", "gunicorn", "app:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
