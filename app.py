@@ -1,3 +1,5 @@
+# 标准库
+import binascii
 import logging
 import os
 import random
@@ -6,18 +8,8 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-import binascii
-
 import httpx
 import redis.asyncio as redis
-from _auth import authRoute
-from _cronjobs import keepMySQLAlive, keerRedisAlive, pushTaskExecQueue
-from _crypto import cryptoRouter, init_crypto
-from _db import init_db, test_db_connection
-from _redis import get_keys_by_pattern, redis_client, set_key as redis_set_key
-from _search import searchRouter
-from _trend import trendingRoute
-from _user import userRoute
 from asgi_correlation_id import CorrelationIdMiddleware
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -27,6 +19,15 @@ from fastapi.responses import JSONResponse
 from fastapi_limiter import FastAPILimiter
 from fastapi_utils.tasks import repeat_every
 from starlette.middleware.sessions import SessionMiddleware
+
+from _auth import authRoute
+from _cronjobs import keepMySQLAlive, keerRedisAlive, pushTaskExecQueue
+from _crypto import cryptoRouter, init_crypto
+from _db import init_db, test_db_connection
+from _redis import get_keys_by_pattern, redis_client, set_key as redis_set_key
+from _search import searchRouter
+from _trend import trendingRoute
+from _user import userRoute
 
 load_dotenv()
 loglevel = os.getenv("LOG_LEVEL", "ERROR")
@@ -169,10 +170,10 @@ async def index(request: Request):
         "commit": os.getenv("COMMIT_ID", "")[:8],
         "instance-id": instanceID[:8],
         # x-request-id:
-        "request-id": request.headers.get("x-request-id:", ""),
+        "request-id": request.headers.get("x-request-id", ""),
         "ray-id": request.headers.get("cf-ray", ""),
         "protocol": request.headers.get("X-Forwarded-Proto", ""),
-        "ip": request.headers.get("Cf-Connecting-Ip", ""),
+        "ip": request.headers.get("CF-Connecting-IP", ""),
         "dataCenter": request.headers.get("Cf-Ipcity", ""),
         "code": 200,
         "message": "OK"
@@ -266,7 +267,7 @@ if os.getenv("DEBUG", "false").lower() == "false":
         allow_credentials=True,
         allow_methods=['GET', 'POST', 'OPTIONS'],  # options 请求是预检请求，需要单独处理
         allow_headers=['Authorization', 'Content-Type', 'Accept', 'Accept-Encoding', 'Accept-Language', 'Origin',
-                       'Referer', 'Cookie', 'User-Agent'],
+                       'Referer', 'Cookie', 'User-Agent'],  # 允许跨域的请求头
     )
     app.add_middleware(
         CorrelationIdMiddleware,
@@ -289,5 +290,7 @@ else:
 
 if __name__ == '__main__':
     import uvicorn
+    import watchfiles
 
+    watchfiles.filters = ["*venv", "\\.env$"]
     uvicorn.run(app, host="0.0.0.0", port=8000)
