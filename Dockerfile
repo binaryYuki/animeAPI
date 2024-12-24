@@ -22,9 +22,8 @@ ARG UID=10001
 RUN adduser \
     --disabled-password \
     --gecos "" \
-    --home "/nonexistent" \
+    --home "/home/appuser" \
     --shell "/sbin/nologin" \
-    --no-create-home \
     --uid "${UID}" \
     appuser
 
@@ -33,8 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libmariadb-dev-compat \
     libmariadb-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+    pkg-config && \
+    rm -rf /var/lib/apt/lists/*
 
 # Setup Python environment in a distinct build stage
 FROM base AS builder
@@ -45,14 +44,14 @@ WORKDIR /app
 RUN pip install uv
 
 # Create a virtual environment and install dependencies
-RUN uv venv && \
-    . .venv/bin/activate && \
-    pip install --upgrade pip
+RUN uv venv -p 3.12 && \
+    uv pip install --upgrade pip
 
 # Leverage a cache mount to speed up subsequent builds
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    . .venv/bin/activate && uv pip sync requirements.txt
+    . .venv/bin/activate && uv pip sync requirements.txt && \
+    uv pip install gunicorn
 
 # Copy the source code into the container in the final stage
 FROM base AS final
@@ -73,9 +72,5 @@ USER appuser
 # Expose the port that the application listens on.
 EXPOSE 8000
 
-# install gunicorn
-RUN . .venv/bin/activate && pip install gunicorn
-
 # Run the application
-# gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 CMD [".venv/bin/gunicorn", "app:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
