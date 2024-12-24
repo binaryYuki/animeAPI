@@ -31,6 +31,8 @@ jobs:
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer $DOKPLOY_AUTH_TOKEN" \
             -H "User-Agent: TZPro/1.0 (like github-actions)" \
+            -H "Referer: panel.tzpro.xyz" \
+            -H "Origin: panel.tzpro.xyz" \
             -d "{\"applicationId\": \"$DOKPLOY_APPLICATION_ID\"}" \
             -w "%{http_code}" \
             -o response_body.txt \
