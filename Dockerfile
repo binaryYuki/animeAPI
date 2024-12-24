@@ -9,10 +9,10 @@ ENV COMMIT_ID=${COMMIT_ID}
 ARG BUILD_AT
 ENV BUILD_AT=${BUILD_AT}
 
-# Prevents Python from writing pyc files.
+# 防止 Python 生成 pyc 文件
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Keeps Python from buffering stdout and stderr.
+# 防止 Python 缓存 stdout 和 stderr
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
@@ -35,26 +35,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# Setup Python environment in a distinct build stage
-FROM base AS builder
-
-WORKDIR /app
-
-# Install uv package
-RUN pip install uv
-
-# Create a virtual environment and install dependencies
-RUN uv venv -p 3.12 && \
-    uv pip install --upgrade pip
-
-# Leverage a cache mount to speed up subsequent builds
+# 复制依赖文件并安装 Python 依赖
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    . .venv/bin/activate && uv pip sync requirements.txt && \
-    uv pip install gunicorn
 
-# Copy the source code into the container in the final stage
-FROM base AS final
+# 安装依赖时禁用缓存以减少镜像体积
+RUN uv venv -p 3.12 && \
+    . .venv/bin/activate && \
+    uv pip install --no-cache-dir --upgrade pip && \
+    uv pip sync requirements.txt --no-cache-dir
 
 # Set working directory
 WORKDIR /app

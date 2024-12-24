@@ -20,7 +20,6 @@
 **/*.*proj.user
 **/*.dbmdl
 **/*.jfm
-**/bin
 **/charts
 **/docker-compose*
 **/compose.y*ml
@@ -30,5 +29,16 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
-LICENSE
-README.md
+# 排除 Python 缓存文件
+# 排除虚拟环境目录
+venv/
+
+# 排除版本控制系统文件
+# 排除日志和临时文件
+*.log
+*.tmp
+
+# 排除 IDE 配置文件
+*.vscode/
+.idea/
+
