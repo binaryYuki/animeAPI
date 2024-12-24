@@ -120,24 +120,41 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: docker
-    steps:
       - name: Deploy Application
         env:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_AUTH_TOKEN: ${{ secrets.DOKPLOY_AUTH_TOKEN }}
           DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
         run: |
+          # Debug output for environment variables (avoid leaking sensitive information)
+          echo "DOKPLOY_URL: $DOKPLOY_URL"
+          echo "DOKPLOY_APPLICATION_ID: $DOKPLOY_APPLICATION_ID"
+          
+          # Send request and capture response and status code
           response=$(curl -X 'POST' \
             "$DOKPLOY_URL/api/application.redeploy" \
             -H 'accept: application/json' \
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer $DOKPLOY_AUTH_TOKEN" \
+            -H "User-Agent: TZPro/1.0 (like github-actions)" \
+            -H "Referer: panel.tzpro.xyz" \
+            -H "Origin: panel.tzpro.xyz" \
             -d "{\"applicationId\": \"$DOKPLOY_APPLICATION_ID\"}" \
             -w "%{http_code}" \
-            -o /dev/null \
+            -o response_body.txt \
             -s)
-
+          
+          # Output response body and status code for debugging
+          echo "HTTP Response Code: $response"
+          echo "Response Body:"
+          cat response_body.txt
+          
+          # Check response status code
           if [ "$response" -ne 200 ]; then
-            echo "Deployment failed with status code: $response $response_body"
+            echo "Deployment failed with status code: $response"
+            echo "Response body:"
+            cat response_body.txt
             exit 1
           fi
+          
+          echo "Deployment succeeded!"
