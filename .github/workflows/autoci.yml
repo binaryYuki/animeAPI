@@ -14,7 +14,7 @@ jobs:
     #   - https://gh.io/supported-runners-and-hardware-resources
     #   - https://gh.io/using-larger-runners (GitHub.com only)
     # Consider using larger runners or machines with greater resources for possible analysis time improvements.
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    runs-on: ubuntu-24.04
     permissions:
       # required for all workflows
       security-events: write
@@ -78,7 +78,7 @@ jobs:
         with:
           category: "/language:${{matrix.language}}"
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: analyze
     env:
       # Configure a constant location for the uv cache
@@ -148,7 +148,7 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: docker
     steps:
       - name: Deploy Application
