@@ -81,6 +81,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: analyze
     steps:
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            my-project-${{ matrix.arch }}-buildx-
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -114,9 +122,19 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: akkk1234/oleapi:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           build-args: |
             COMMIT_ID=${{ env.COMMIT_ID }}
             BUILD_AT=${{ env.BUILD_AT }}
+
+      # Temp fix
+      # https://github.com/docker/build-push-action/issues/252
+      # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
   deploy:
     runs-on: ubuntu-latest
     needs: docker
