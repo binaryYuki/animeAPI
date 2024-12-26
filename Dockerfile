@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libmariadb-dev-compat \
     libmariadb-dev \
+    curl \
     pkg-config && \
     rm -rf /var/lib/apt/lists/* \
     && apt-get clean
