@@ -245,6 +245,8 @@ async def check_cdn(request: Request, call_next):
     """
     if request.headers.get("Cf-Ray") or request.headers.get("Eagleeye-Traceid"):
         return await call_next(request)
+    elif request.headers.get("X-Via") == "internal":
+        return await call_next(request)
     else:
         return JSONResponse(content={"status": "error", "error": "Direct access not allowed"}, status_code=403)
 
