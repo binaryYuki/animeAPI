@@ -162,6 +162,16 @@ async def index(request: Request):
     :return:
     """
     version_suffix = os.getenv("COMMIT_ID", "")[:8]
+    if request.headers.get("Cf-Ray"):
+        via = "Cloudflare"
+        rayId = request.headers.get("Cf-Ray")
+        realIp = request.headers.get("Cf-Connecting-Ip")
+        dataCenter = request.headers.get("Cf-Ipcountry")
+    elif request.headers.get("Eagleeye-Traceid"):
+        via = "Aliyun"
+        rayId = request.headers.get("Eagleeye-Traceid")
+        realIp = request.headers.get("X-Real-Ip")
+        dataCenter = request.headers.get("Via")
     info = {
         "version": "v2.1-prod-" + version_suffix,
         "buildAt": os.environ.get("BUILD_AT", ""),
@@ -170,10 +180,10 @@ async def index(request: Request):
         "commit": os.getenv("COMMIT_ID", "")[:8],
         "instance-id": instanceID[:8],
         "request-id": request.headers.get("x-request-id", ""),
-        "ray-id": request.headers.get("cf-ray", ""),
+        "ray-id": rayId,
         "protocol": request.headers.get("X-Forwarded-Proto", ""),
-        "ip": request.headers.get("CF-Connecting-IP", ""),
-        "dataCenter": request.headers.get("Cf-Ipcity", ""),
+        "ip": realIp,
+        "dataCenter": dataCenter,
         "code": 200,
         "message": "OK"
     }
@@ -230,6 +240,24 @@ async def healthz():
                                      "redis_hint": "An error occurred" if not redisStatus else "",
                                      "mysql_hint": "An error occurred" if not mysqlStatus else "",
                                      "live_servers": live_servers})
+
+
+@app.middleware("http")
+async def check_cdn(request: Request, call_next):
+    """
+    检查 CDN
+    可用: cloudflare / alicdn
+    custom headers:
+        - cf-ray
+        - Eagleeye-Traceid
+    :param request:
+    :param call_next:
+    :return:
+    """
+    if request.headers.get("Cf-Ray") or request.headers.get("Eagleeye-Traceid"):
+        return await call_next(request)
+    else:
+        return JSONResponse(content={"status": "error", "error": "Direct access not allowed"}, status_code=403)
 
 
 @app.middleware("http")
