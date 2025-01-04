@@ -172,6 +172,8 @@ async def index(request: Request):
         rayId = request.headers.get("Eagleeye-Traceid")
         realIp = request.headers.get("X-Real-Ip")
         dataCenter = request.headers.get("Via")
+    else:
+        return JSONResponse(content={"status": "error", "error": "Direct access not allowed"}, status_code=403)
     info = {
         "version": "v2.1-prod-" + version_suffix,
         "buildAt": os.environ.get("BUILD_AT", ""),
@@ -184,24 +186,11 @@ async def index(request: Request):
         "protocol": request.headers.get("X-Forwarded-Proto", ""),
         "ip": realIp,
         "dataCenter": dataCenter,
+        "via": via,
         "code": 200,
         "message": "OK"
     }
 
-    # # 转为 pre defined html
-    # html = """
-    # <pre>
-    # <code>
-    # Version: {version}
-    # Build At: {build_at}
-    # Author: {author}
-    # Arch: {arch}
-    # Commit: {commit}
-    # Instance ID: {instance_id}
-    # </code>
-    # </pre>
-    # """.format(**info)
-    # return HTMLResponse(content=html)
     return JSONResponse(content=info)
 
 
