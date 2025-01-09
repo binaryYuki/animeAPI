@@ -175,7 +175,7 @@ async def index(request: Request):
     else:
         return JSONResponse(content={"status": "error", "error": "Direct access not allowed"}, status_code=403)
     info = {
-        "version": "v2.1-prod-" + version_suffix,
+        "version": "v2.2-prod-" + version_suffix,
         "buildAt": os.environ.get("BUILD_AT", ""),
         "author": "binaryYuki <noreply.tzpro.xyz>",
         "arch": subprocess.run(['uname', '-m'], stdout=subprocess.PIPE).stdout.decode().strip(),
