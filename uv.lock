@@ -741,7 +741,7 @@ requires-dist = [
     { name = "pydantic-extra-types", specifier = "==2.9.0" },
     { name = "pydantic-settings", specifier = "==2.6.1" },
     { name = "pygments", specifier = "==2.18.0" },
-    { name = "pyjwt", specifier = "==2.9.0" },
+    { name = "pyjwt", specifier = ">=2.9" },
     { name = "python-dotenv", specifier = "==1.0.1" },
     { name = "python-jose", specifier = "==3.3.0" },
     { name = "python-multipart", specifier = "==0.0.18" },
