@@ -14,8 +14,6 @@ asgi-correlation-id==4.3.3
     # via oleapi (pyproject.toml)
 async-timeout==4.0.3
     # via oleapi (pyproject.toml)
-asyncmy==0.2.9
-    # via oleapi (pyproject.toml)
 beautifulsoup4==4.12.3
     # via
     #   oleapi (pyproject.toml)

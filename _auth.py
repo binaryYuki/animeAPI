@@ -1,15 +1,11 @@
 import datetime
-import json
 import os
 from logging import getLogger
 
 import dotenv
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Request
-from sqlalchemy import text
 from starlette.responses import JSONResponse
-
-from _db import SessionLocal, User, WebHookStorage
 
 logger = getLogger(__name__)
 
@@ -59,48 +55,7 @@ async def store_webhook_data(data: dict):
     """
     :param data:
     """
-    async with SessionLocal() as session:
-        async with session.begin():
-            webhook = WebHookStorage(
-                hook_id=data["hookId"],
-                event=data["event"],
-                session_id=data["sessionId"],
-                user_agent=data["userAgent"],
-                user_ip=data["userIp"],
-                sessionId=data["sessionId"],
-            )
-            data = data['user']
-            user = User(
-                id=data['id'],
-                username=data['username'],
-                primaryEmail=data['primaryEmail'],
-                primaryPhone=data['primaryPhone'],
-                name=data['name'],
-                avatar=data['avatar'],
-                customData=json.dumps(data['customData']),  # 将字典序列化为JSON字符串
-                identities=json.dumps(data['identities']),
-                profile=json.dumps(data['profile']),
-                applicationId=data['applicationId'],
-                lastSignInAt=data['lastSignInAt'] / 1000,
-                createdAt=data['createdAt'] / 1000,
-                updatedAt=data['updatedAt'] / 1000,
-            )
-            # 通过 id 判断用户是否存在 如果存在就更新用户信息 否则插入新用户
-            user_exist = await session.execute(text(f"SELECT * FROM users WHERE id='{data['id']}'"))
-            user_exist = user_exist.fetchone()
-            if user_exist:
-                await session.execute(
-                    text(f"UPDATE users SET username='{data['username']}', primaryEmail='{data['primaryEmail']}', "
-                         f"primaryPhone='{data['primaryPhone']}', name='{data['name']}', avatar='{data['avatar']}', "
-                         f"customData='{json.dumps(data['customData'])}', identities='{json.dumps(data['identities'])}', "
-                         f"profile='{json.dumps(data['profile'])}', applicationId='{data['applicationId']}', "
-                         f"lastSignInAt='{data['lastSignInAt'] / 1000}', createdAt='{data['createdAt'] / 1000}', "
-                         f"updatedAt='{data['updatedAt'] / 1000}' WHERE id='{data['id']}'"))
-            else:
-                session.add(user)
-            session.add(webhook)
-            await session.commit()
-            await session.close()
+    pass
 
 
 @authRoute.api_route('/hook', methods=['POST'])

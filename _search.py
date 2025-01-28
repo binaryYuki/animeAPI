@@ -12,7 +12,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse
 
 from _crypto import decryptData
-from _db import cache_vod_data
 from _redis import delete_key as redis_delete_key, get_key as redis_get_key, key_exists as redis_key_exists, \
     set_key as redis_set_key
 from _utils import _getRandomUserAgent, generate_vv_detail, url_encode
@@ -137,7 +136,6 @@ async def search(request: Request, background_tasks: BackgroundTasks):
     if result and result['data']['total'] == 0:
         return JSONResponse({"error": "No result Found"}, status_code=200)
     if result:
-        background_tasks.add_task(cache_vod_data, result)
         background_tasks.add_task(redis_set_key, id, json.dumps(result), ex=86400)  # 缓存一天
     try:
         return JSONResponse(result)

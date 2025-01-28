@@ -49,12 +49,6 @@ wheels = [
 ]
 
 [[package]]
-name = "asyncmy"
-version = "0.2.9"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/50/1e/67ec08cde59222d275909a508ad2db1ac8c20a72404a189dca31e242179b/asyncmy-0.2.9.tar.gz", hash = "sha256:da188be013291d1f831d63cdd3614567f4c63bfdcde73631ddff8df00c56d614", size = 63350 }
-
-[[package]]
 name = "beautifulsoup4"
 version = "4.12.3"
 source = { registry = "https://pypi.org/simple" }
@@ -602,7 +596,6 @@ dependencies = [
     { name = "anyio" },
     { name = "asgi-correlation-id" },
     { name = "async-timeout" },
-    { name = "asyncmy" },
     { name = "beautifulsoup4" },
     { name = "bs4" },
     { name = "cachetools" },
@@ -688,7 +681,6 @@ requires-dist = [
     { name = "anyio", specifier = "==4.4.0" },
     { name = "asgi-correlation-id", specifier = "==4.3.3" },
     { name = "async-timeout", specifier = "==4.0.3" },
-    { name = "asyncmy", specifier = "==0.2.9" },
     { name = "beautifulsoup4", specifier = "==4.12.3" },
     { name = "bs4", specifier = "==0.0.2" },
     { name = "cachetools", specifier = "==5.4.0" },

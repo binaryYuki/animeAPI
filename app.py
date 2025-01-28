@@ -21,13 +21,11 @@ from fastapi_utils.tasks import repeat_every
 from starlette.middleware.sessions import SessionMiddleware
 
 from _auth import authRoute
-from _cronjobs import keepMySQLAlive, keerRedisAlive, pushTaskExecQueue
+from _cronjobs import keerRedisAlive, pushTaskExecQueue
 from _crypto import cryptoRouter, init_crypto
-from _db import init_db, test_db_connection
 from _redis import get_keys_by_pattern, redis_client, set_key as redis_set_key
 from _search import searchRouter
 from _trend import trendingRoute
-from _user import userRoute
 
 load_dotenv()
 loglevel = os.getenv("LOG_LEVEL", "ERROR")
@@ -101,19 +99,13 @@ async def lifespan(_: FastAPI):
     redis_connection = redis.from_url(
         f"redis://default:{os.getenv('REDIS_PASSWORD', '')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}")
     await FastAPILimiter.init(redis_connection)
-    test = await redis_connection.ping()
-    if test:
+    if await redis_connection.ping():
         logger.info("Redis connection established")
-    # await redis_connection.flush db()
-    if os.getenv("MYSQL_CONN_STRING"):
-        await init_db()
-        logger.info("MySQL connection established")
     await testPushServer()
     await registerInstance()
     print("Instance registered", instanceID)
     await pushTaskExecQueue()
     await keerRedisAlive()
-    await keepMySQLAlive()
     await init_crypto()
     yield
     await FastAPILimiter.close()
@@ -126,7 +118,6 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan, title="Anime API", version="1.1.4", openapi_url=None)
 
 app.include_router(authRoute)
-app.include_router(userRoute)
 app.include_router(searchRouter)
 app.include_router(trendingRoute)
 app.include_router(cryptoRouter)
@@ -201,34 +192,11 @@ async def healthz():
     :return:
     """
     try:
-        await redis_client.ping()
-        redisStatus = True
+        f = await redis_client.ping()
+        if f:
+            return JSONResponse(content={"status": "ok", "message": "Redis connection established"}, status_code=200)
     except Exception as e:
-        redisStatus = False
-        logging.error("Redis error: %s", str(e))
-    # check mysql connection
-    try:
-        await test_db_connection()
-        mysqlStatus = True
-    except ConnectionError as e:
-        mysqlStatus = False
-        logging.error("MySQL connection error: %s", str(e))
-    except Exception as e:
-        mysqlStatus = False
-        logging.error("MySQL error: %s", str(e))
-    try:
-        live_servers = await getLiveInstances()
-    except Exception as e:
-        print(f"Error getting live servers: {e}")
-        live_servers = []
-    if redisStatus and mysqlStatus and live_servers:
-        return JSONResponse(content={"status": "ok", "redis": redisStatus, "mysql": mysqlStatus,
-                                     "live_servers": live_servers})
-    else:
-        return JSONResponse(content={"status": "error", "redis": redisStatus, "mysql": mysqlStatus,
-                                     "redis_hint": "An error occurred" if not redisStatus else "",
-                                     "mysql_hint": "An error occurred" if not mysqlStatus else "",
-                                     "live_servers": live_servers})
+        return JSONResponse(content={"status": "error", "error": f"Failed to connect to Redis: {e}"}, status_code=500)
 
 
 @app.middleware("http")

@@ -9,7 +9,6 @@ dependencies = [
     "anyio==4.4.0",
     "asgi-correlation-id==4.3.3",
     "async-timeout==4.0.3",
-    "asyncmy==0.2.9",
     "beautifulsoup4==4.12.3",
     "bs4==0.0.2",
     "cachetools==5.4.0",

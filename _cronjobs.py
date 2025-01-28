@@ -1,12 +1,9 @@
 import json
 import logging
-from datetime import datetime
 
 from fastapi_utils.tasks import repeat_every
 from httpx import AsyncClient
-from sqlalchemy.exc import OperationalError
 
-from _db import PushLog, SessionLocal, test_db_connection
 from _redis import delete_key, get_key, get_keys_by_pattern, redis_client, set_key as redis_set_key
 
 logger = logging.getLogger(__name__)
@@ -20,46 +17,7 @@ async def logPushTask(taskId: str, data: dict):
     :return: Boolean
     :example: {'data': {'baseURL': 'https://api.day.app/uKeSrwm3ainGgn5SAmRyg9/', 'msg': 'You have a new notification!', 'push_receiver': 'yuki', 'icon': 'https://static.olelive.com/snap/fa77502e442ee6bbd39be20b2a2810ee.jpg?_n=202409290554', 'click_url': 'https://example.com', 'is_passive': False, 'headers': {'Authorization': 'Bearer your_token_here', 'Content-Type': 'application/json'}, 'log_data': {'push_id': '12345', 'push_receiver': 'user@example.com', 'push_by': 'system'}}, 'result': 'success'}
     """
-    async with SessionLocal() as session:
-        async with session.begin():
-            push_result = True if data['result'] == 'success' else False
-            pushLog = PushLog(
-                push_id=taskId,
-                push_receiver=data['data']['log_data']['push_receiver'],
-                push_channel="bark",
-                push_at=datetime.now(),
-                push_by=data['data']['log_data']['push_by'] if 'push_by' in data['data']['log_data'] else 'system',
-                push_result=push_result,
-                push_message=data['data']['msg'],
-                push_server='bark',
-                user_id=data['data']['log_data']['user_id'] if 'user_id' in data['data']['log_data'] else None
-            )
-            session.add(pushLog)
-            try:
-                await session.commit()
-                return True
-            except OperationalError as e:
-                async with session.begin():
-                    session.rollback()
-                    pushLog = PushLog(
-                        push_id=taskId,
-                        push_receiver=data['data']['log_data']['push_receiver'],
-                        push_channel="bark",
-                        push_at=datetime.now(),
-                        push_by=data['data']['log_data']['push_by'] if 'push_by' in data['data'][
-                            'log_data'] else 'system',
-                        push_result=push_result,
-                        push_message=data['data']['msg'],
-                        push_server='bark',
-                        user_id=data['data']['log_data']['user_id'] if 'user_id' in data['data']['log_data'] else None
-                    )
-                    session.add(pushLog)
-                    await session.commit()
-                    return True
-            except Exception as e:
-                logger.error(f"Failed to log push task: {e}", exc_info=True)
-                return False
-
+    pass
 
 @repeat_every(seconds=30, wait_first=True)  # wait_first=True 表示等待第一次执行 也就是启动时执行
 async def pushTaskExecQueue() -> bool:
@@ -128,6 +86,4 @@ async def keepMySQLAlive():
     """
     Keep MySQL alive avoid server from cool startup
     """
-    await test_db_connection()
-    # print("MySQL is alive")
-    return True
+    pass
