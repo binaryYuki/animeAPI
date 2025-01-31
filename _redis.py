@@ -20,6 +20,8 @@ else:
 
 # Initialize Redis client
 redis_client = redis.from_url(REDIS_CONN)
+# set max size of redis connection pool
+redis_client.connection_pool.max_connections = 3
 
 
 async def test_redis():
