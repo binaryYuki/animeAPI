@@ -56,7 +56,7 @@ dependencies = [
     "pygments==2.18.0",
     "pyjwt>=2.9",
     "python-dotenv==1.0.1",
-    "python-jose==3.3.0",
+    "python-jose==3.4.0",
     "python-multipart==0.0.18",
     "pyyaml==6.0.2",
     "redis==5.0.8",
