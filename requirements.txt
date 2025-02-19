@@ -196,7 +196,7 @@ python-dotenv==1.0.1
     #   oleapi (pyproject.toml)
     #   pydantic-settings
     #   uvicorn
-python-jose==3.3.0
+python-jose==3.4.0
     # via oleapi (pyproject.toml)
 python-multipart==0.0.18
     # via oleapi (pyproject.toml)
