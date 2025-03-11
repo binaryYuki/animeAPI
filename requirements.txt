@@ -161,7 +161,7 @@ psutil==5.9.8
     # via
     #   oleapi (pyproject.toml)
     #   fastapi-utils
-pyasn1==0.6.0
+pyasn1==0.4.8
     # via
     #   oleapi (pyproject.toml)
     #   python-jose
