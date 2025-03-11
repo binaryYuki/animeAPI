@@ -42,7 +42,7 @@ click==8.1.7
     #   oleapi (pyproject.toml)
     #   typer
     #   uvicorn
-cryptography==43.0.1
+cryptography==44.0.1
     # via oleapi (pyproject.toml)
 deprecated==1.2.14
     # via
