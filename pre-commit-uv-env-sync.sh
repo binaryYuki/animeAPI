@@ -2,7 +2,7 @@
 
 echo "Running pre-commit hook"
 
-uv pip compile pyproject.toml -o requirements.txt
+uv pip freeze > requirements.txt
 echo "uv env sync successfully"
 
 echo "pre-commit hook finished"
