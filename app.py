@@ -195,8 +195,11 @@ async def healthz():
         f = await redis_client.ping()
         if f:
             return JSONResponse(content={"status": "ok", "message": "Redis connection established"}, status_code=200)
+        else:
+            return JSONResponse(content={"status": "error", "error": "redis conection failed code: 1000"},
+                                status_code=500)
     except Exception as e:
-        return JSONResponse(content={"status": "error", "error": f"Failed to connect to Redis: {e}"}, status_code=500)
+        return JSONResponse(content={"status": "error", "error": f"redis conection failed code: 1001"}, status_code=500)
 
 
 @app.middleware("http")
