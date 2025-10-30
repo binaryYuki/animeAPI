@@ -38,6 +38,7 @@ async def checkSum(data):
     try:
         data = await decryptData(data.get('data'))
     except Exception as e:
+        logging.error(e)
         raise HTTPException("Invalid Request")
     return json.loads(data)
 
@@ -115,6 +116,9 @@ async def link_keywords(keyword):
 @searchRouter.api_route('/search', dependencies=[Depends(RateLimiter(times=3, seconds=1))], methods=['POST'],
                         name='search')
 async def search(request: Request, background_tasks: BackgroundTasks):
+    """
+    搜索接口
+    """
     data = await request.json()
     data = await checkSum(data)
     keyword, page, size = data.get('keyword'), data.get('page'), data.get('size')
@@ -180,8 +184,8 @@ async def keyword(request: Request):
 
 
 @searchRouter.api_route('/detail', methods=['POST'], name='detail',
-                        dependencies=[Depends(RateLimiter(times=1, seconds=3))])
-async def detail(request: Request):
+                        dependencies=[Depends(RateLimiter(times=2, seconds=1))])
+async def detail(request: Request, background_tasks: BackgroundTasks):
     data = await request.json()
     data = await checkSum(data)
     try:
@@ -189,21 +193,42 @@ async def detail(request: Request):
     except Exception as e:
         return JSONResponse({"error": "Invalid Request, missing param: id"}, status_code=400,
                             headers={"X-Error": str(e)})
-    vv = await generate_vv_detail()
-    url = f"https://api.olelive.com/v1/pub/vod/detail/{id}/true?_vv={vv}"
-    headers = {
-        'User-Agent': _getRandomUserAgent(),
-        'Referer': 'https://www.olevod.com/',
-        'Origin': 'https://www.olevod.com/',
-    }
+
+    # Try to return cached detail (cache for 30 minutes)
+    redis_key = f"detail_{id}"
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers)
-        response_data = response.json()
-        return JSONResponse(response_data, status_code=200)
-    except:
-        return JSONResponse({"error": "Upstream Error"}, status_code=501)
-    # direct play https://player.viloud.tv/embed/play?url=https://www.olevod.com/vod/detail/5f4b3b7b7f3c1d0001b2b3b3&autoplay=1
+        cached = await redis_get_key(redis_key)
+        if cached:
+            cached_data = json.loads(cached)
+            # mark as cached so clients can know
+            if isinstance(cached_data, dict):
+                cached_data["msg"] = "cached"
+            return JSONResponse(cached_data, status_code=200)
+    except Exception:
+        # if redis lookup fails, continue to fetch upstream
+        vv = await generate_vv_detail()
+        url = f"https://api.olelive.com/v1/pub/vod/detail/{id}/true?_vv={vv}"
+        headers = {
+            'User-Agent': _getRandomUserAgent(),
+            'Referer': 'https://www.olevod.com/',
+            'Origin': 'https://www.olevod.com/',
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers)
+            response_data = response.json()
+            # cache the response for 30 minutes (1800 seconds) in background
+            try:
+                background_tasks.add_task(redis_set_key, redis_key, json.dumps(response_data), ex=1800)
+            except Exception:
+                # if scheduling background task fails, attempt immediate set but don't block on errors
+                try:
+                    await redis_set_key(redis_key, json.dumps(response_data), ex=1800)
+                except Exception:
+                    pass
+            return JSONResponse(response_data, status_code=200)
+        except Exception:
+            return JSONResponse({"error": "Upstream Error"}, status_code=501)
 
 
 @searchRouter.api_route('/report/keyword', methods=['POST'], name='report_keyword',

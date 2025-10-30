@@ -16,128 +16,101 @@ from _utils import _getRandomUserAgent, generate_vv_detail as gen_vv
 
 trendingRoute = APIRouter(prefix='/api/trending', tags=['Trending'])
 
+ALLOWED_PERIODS = {'day', 'week', 'month', 'all'}
+ALLOWED_TYPE_IDS = {1, 2, 3, 4}
+
 
 async def gen_url(typeID: int, period: str, amount=10):
-    """
-    传入的值必须经过检查，否则可能会导致 API 请求失败。
-    """
-    if period not in ['day', 'week', 'month', 'all']:
-        return JSONResponse(status_code=400,
-                            content={'error': 'Invalid period parameter, must be one of: day, week, month, all'})
-    if typeID not in [1, 2, 3, 4]:
-        return JSONResponse(status_code=400, content={
-            'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
+    if period not in ALLOWED_PERIODS:
+        return JSONResponse(status_code=400, content={'error': 'Invalid period parameter, must be one of: day, week, month, all'})
+    if typeID not in ALLOWED_TYPE_IDS:
+        return JSONResponse(status_code=400, content={'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
     vv = await gen_vv()
-    url = f"https://api.olelive.com/v1/pub/index/vod/data/rank/{period}/{typeID}/{amount}?_vv={vv}"
-    return url
+    return f"https://api.olelive.com/v1/pub/index/vod/data/rank/{period}/{typeID}/{amount}?_vv={vv}"
 
 
 async def gen_url_v2(typeID: int, amount=10):
-    """
-    传入的值必须经过检查，否则可能会导致 API 请求失败。
-    """
-    if typeID not in [1, 2, 3, 4]:
-        return JSONResponse(status_code=400, content={
-            'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
+    if typeID not in ALLOWED_TYPE_IDS:
+        return JSONResponse(status_code=400, content={'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
     vv = await gen_vv()
-    url = f"https://api.olelive.com/v1/pub/index/vod/hot/{typeID}/0/{amount}?_vv={vv}"
-    return url
+    return f"https://api.olelive.com/v1/pub/index/vod/hot/{typeID}/0/{amount}?_vv={vv}"
 
 
 @trendingRoute.post('/{period}/trend')
 async def fetch_trending_data(request: Request, period: Optional[str] = 'day'):
-    """
-    Fetch trending data from the OLE API.
-    :param request: The incoming request.
-    :parameter period: The period of time to fetch trending data for. --> str Options: 'day', 'week', 'month', 'all'
-    :parameter typeID: The type ID of the item. --> int
-    typeID docs:
-    1: 电影
-    2: 电视剧（连续剧）
-    3: 综艺
-    4: 动漫
-    :parameter amount: The number of items to fetch. --> int default: 10
-    """
     try:
-        data = await request.json()
+        body = await request.json()
         try:
-            typeID = data['params']['typeID']
+            typeID = body['params']['typeID']
             logging.info(f"typeID1: {typeID}")
-        except KeyError as e:
-            return JSONResponse(status_code=400, content={'error': f"Where is your param?"})
+        except KeyError:
+            return JSONResponse(status_code=400, content={'error': "Where is your param?"})
     except JSONDecodeError as e:
         logging.error(f"JSONDecodeError: {e}, hint: request.json() failed, step fetch_trending_data")
-        return JSONResponse(status_code=400, content={'error': f"Where is your param?"})
+        return JSONResponse(status_code=400, content={'error': "Where is your param?"})
+
     if period is None:
         logging.error(f"period: {period}, hint: period is None, step fetch_trending_data")
         return JSONResponse(status_code=400, content={'error': 'Missing required parameters: period'})
     if typeID is None:
         logging.info(f"typeID: {typeID}, hint:typeID is None, step fetch_trending_data")
         return JSONResponse(status_code=400, content={'error': 'Missing required parameters: typeID'})
-    if period not in ['day', 'week', 'month', 'all']:
+    if period not in ALLOWED_PERIODS:
         logging.error(f"period: {period}, hint:period not in ['day', 'week', 'month', 'all]")
-        return JSONResponse(status_code=400,
-                            content={'error': 'Invalid period parameter, must be one of: day, week, month, all'})
-    if typeID not in [1, 2, 3, 4]:
+        return JSONResponse(status_code=400, content={'error': 'Invalid period parameter, must be one of: day, week, month, all'})
+    if typeID not in ALLOWED_TYPE_IDS:
         logging.error(f"typeID: {typeID}, hint:typeID not in [1,2,3,4]")
-        return JSONResponse(status_code=400, content={
-            'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
+        return JSONResponse(status_code=400, content={'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
+
     url = await gen_url(typeID, period, amount=10)
     logging.info(f"Fetching trending data from: {url}")
+
+    resp = None
+    api_payload = None
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers={'User-Agent': _getRandomUserAgent()}, timeout=30)
-            data = response.json()
-            return JSONResponse(status_code=200, content=data)
+            resp = await client.get(url, headers={'User-Agent': _getRandomUserAgent()}, timeout=30)
+            api_payload = resp.json()
+            return JSONResponse(status_code=200, content=api_payload)
     except httpx.RequestError as e:
-        print(data)
+        logging.debug(f"snapshot: {api_payload}")
         return JSONResponse(status_code=500, content={'error': f"An error occurred: {e}"})
     except httpx.HTTPStatusError as e:
-        print(data)
+        logging.debug(f"snapshot: {api_payload}")
         return JSONResponse(status_code=500, content={'error': f"An HTTP error occurred: {e}"})
     except Exception as e:
-        print(data)
-        return JSONResponse(status_code=500, content={'error': f"An error occurred: {e}, response: {response.text}"})
+        raw_text = resp.text if resp is not None else ""
+        logging.debug(f"snapshot: {api_payload}")
+        return JSONResponse(status_code=500, content={'error': f"An error occurred: {e}, response: {raw_text}"})
 
 
 @trendingRoute.api_route('/v2/{typeID}', methods=['POST'], dependencies=[Depends(RateLimiter(times=2, seconds=1))])
 async def fetch_trending_data_v2(request: Request, typeID: Optional[int] = None):
-    """
-    Fetch trending data from the OLE API.
-    :param request: The incoming request.
-    :parameter typeID: The type ID of the item. --> int
-    typeID docs:
-    1: 电影
-    2: 电视剧（连续剧）
-    3: 综艺
-    4: 动漫
-    :parameter amount: The number of items to fetch. --> int default: 10
-    """
     try:
         amount = request.query_params['amount']
-    except KeyError as e:
+    except KeyError:
         amount = 10
+
     if typeID is None:
         logging.info(f"typeID: {typeID}, hint:typeID is None, step fetch_trending_data")
         return JSONResponse(status_code=400, content={'error': 'Missing required parameters: typeID'})
-    if typeID not in [1, 2, 3, 4]:
+    if typeID not in ALLOWED_TYPE_IDS:
         logging.error(f"typeID: {typeID}, hint:typeID not in [1,2,3,4]")
-        return JSONResponse(status_code=400, content={
-            'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
+        return JSONResponse(status_code=400, content={'error': 'Invalid typeID parameter, must be one of: 1 --> 电影, 2 --> 电视剧（连续剧）, 3 --> 综艺, 4 --> 动漫'})
+
     redis_key = f"trending_v2_cache_{datetime.datetime.now().strftime('%Y-%m-%d')}_{typeID}_{amount}"
-    if await get_key(redis_key):
+    cached = await get_key(redis_key)
+    if cached:
         logging.info(f"Hit cache for key: {redis_key}")
-        data = await get_key(redis_key)
-        data = json.loads(data)
-        return JSONResponse(status_code=200, content=data)
-    else:
-        url = await gen_url_v2(typeID, amount)
-        logging.info(f"Fetching trending data from: {url}")
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers={'User-Agent': _getRandomUserAgent()}, timeout=30)
-                data = json.dumps(response.json())
-                await set_key(redis_key, data, 60 * 60 * 24)
-                return JSONResponse(status_code=200, content=json.loads(data))
-        except httpx.RequestError as e:
-            return JSONResponse(status_code=500, content={'error': f"An error occurred: {e}"})
+        return JSONResponse(status_code=200, content=json.loads(cached))
+
+    url = await gen_url_v2(typeID, amount)
+    logging.info(f"Fetching trending data from: {url}")
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers={'User-Agent': _getRandomUserAgent()}, timeout=30)
+            payload = json.dumps(response.json())
+            await set_key(redis_key, payload, 60 * 60 * 24)
+            return JSONResponse(status_code=200, content=json.loads(payload))
+    except httpx.RequestError as e:
+        return JSONResponse(status_code=500, content={'error': f"An error occurred: {e}"})
