@@ -204,31 +204,33 @@ async def detail(request: Request, background_tasks: BackgroundTasks):
             if isinstance(cached_data, dict):
                 cached_data["msg"] = "cached"
             return JSONResponse(cached_data, status_code=200)
-    except Exception:
-        # if redis lookup fails, continue to fetch upstream
-        vv = await generate_vv_detail()
-        url = f"https://api.olelive.com/v1/pub/vod/detail/{id}/true?_vv={vv}"
-        headers = {
+    except Exception as e:
+        logging.info(f"Invalid Request: {data}, {e}")
+        pass
+    # if redis lookup fails, continue to fetch upstream
+    vv = await generate_vv_detail()
+    url = f"https://api.olelive.com/v1/pub/vod/detail/{id}/true?_vv={vv}"
+    headers = {
             'User-Agent': _getRandomUserAgent(),
             'Referer': 'https://www.olevod.com/',
             'Origin': 'https://www.olevod.com/',
-        }
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
+        response_data = response.json()
+        # cache the response for 30 minutes (1800 seconds) in background
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
-            response_data = response.json()
-            # cache the response for 30 minutes (1800 seconds) in background
-            try:
-                background_tasks.add_task(redis_set_key, redis_key, json.dumps(response_data), ex=1800)
-            except Exception:
-                # if scheduling background task fails, attempt immediate set but don't block on errors
-                try:
-                    await redis_set_key(redis_key, json.dumps(response_data), ex=1800)
-                except Exception:
-                    pass
-            return JSONResponse(response_data, status_code=200)
+            background_tasks.add_task(redis_set_key, redis_key, json.dumps(response_data), ex=1800)
         except Exception:
-            return JSONResponse({"error": "Upstream Error"}, status_code=501)
+            # if scheduling background task fails, attempt immediate set but don't block on errors
+            try:
+                await redis_set_key(redis_key, json.dumps(response_data), ex=1800)
+            except Exception:
+                pass
+        return JSONResponse(response_data, status_code=200)
+    except Exception:
+        return JSONResponse({"error": "Upstream Error"}, status_code=501)
 
 
 @searchRouter.api_route('/report/keyword', methods=['POST'], name='report_keyword',
