@@ -161,7 +161,7 @@ async def keyword(request: Request):
     _keyword = data.get('keyword')
     if _keyword == '' or _keyword == 'your keyword':
         return JSONResponse({}, status_code=200)
-    if _keyword == 'Yuki Forever💗':
+    if _keyword == 'ping':
         return JSONResponse(
             {"code": 0, "data": [{"type": "vod", "words": ["pong"]}],
              "msg": "ok"}, status_code=200, headers={"X-Info": "Success"})
@@ -178,7 +178,7 @@ async def keyword(request: Request):
         logging.error("Error: " + str(e), stack_info=True)
         return JSONResponse({"error": str(e)}, status_code=501, headers={"X-Error": str(e)})
     try:
-        return JSONResponse(data)
+        return JSONResponse(data, status_code=200, headers={"X-Cache": "HIT" if "msg" in data and data["msg"] == "cached" else "MISS"})
     except:
         return JSONResponse(json.loads(data), status_code=200, headers={"X-Cache": "MISS"})
 
