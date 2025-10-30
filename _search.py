@@ -163,8 +163,8 @@ async def keyword(request: Request):
         return JSONResponse({}, status_code=200)
     if _keyword == 'Yuki Forever💗':
         return JSONResponse(
-            {"code": 0, "data": [{"type": "vod", "words": ["每一个未来的瞬间", "都有你的名字", "Yuki Forever💗"]}],
-             "msg": "ok"}, status_code=200)
+            {"code": 0, "data": [{"type": "vod", "words": ["pong"]}],
+             "msg": "ok"}, status_code=200, headers={"X-Info": "Success"})
     redis_key = f"keyword_{datetime.datetime.now().strftime('%Y-%m-%d')}_{_keyword}"
     try:
         if await redis_get_key(redis_key):
@@ -176,11 +176,11 @@ async def keyword(request: Request):
             await redis_set_key(redis_key, json.dumps(data), ex=86400)  # 缓存一天
     except Exception as e:
         logging.error("Error: " + str(e), stack_info=True)
-        return JSONResponse({"error": str(e)}, status_code=501)
+        return JSONResponse({"error": str(e)}, status_code=501, headers={"X-Error": str(e)})
     try:
         return JSONResponse(data)
     except:
-        return JSONResponse(json.loads(data), status_code=200)
+        return JSONResponse(json.loads(data), status_code=200, headers={"X-Cache": "MISS"})
 
 
 @searchRouter.api_route('/detail', methods=['POST'], name='detail',
@@ -192,7 +192,7 @@ async def detail(request: Request, background_tasks: BackgroundTasks):
         id = data.get('id')
     except Exception as e:
         return JSONResponse({"error": "Invalid Request, missing param: id"}, status_code=400,
-                            headers={"X-Error": str(e)})
+                            headers={"X-Cache": "MISS"})
 
     # Try to return cached detail (cache for 30 minutes)
     redis_key = f"detail_{id}"
@@ -203,9 +203,9 @@ async def detail(request: Request, background_tasks: BackgroundTasks):
             # mark as cached so clients can know
             if isinstance(cached_data, dict):
                 cached_data["msg"] = "cached"
-            return JSONResponse(cached_data, status_code=200)
+            return JSONResponse(cached_data, status_code=200, headers={"X-Cache": "HIT"})
     except Exception as e:
-        logging.info(f"Invalid Request: {data}, {e}")
+        logging.info(f"Invalid Request: {data}, {e}", stack_info=True)
         pass
     # if redis lookup fails, continue to fetch upstream
     vv = await generate_vv_detail()
@@ -228,9 +228,9 @@ async def detail(request: Request, background_tasks: BackgroundTasks):
                 await redis_set_key(redis_key, json.dumps(response_data), ex=1800)
             except Exception:
                 pass
-        return JSONResponse(response_data, status_code=200)
+        return JSONResponse(response_data, status_code=200, headers={"X-Cache": "MISS"})
     except Exception:
-        return JSONResponse({"error": "Upstream Error"}, status_code=501)
+        return JSONResponse({"error": "Upstream Error"}, status_code=501, headers={"X-Cache": "MISS, Upstream Error"})
 
 
 @searchRouter.api_route('/report/keyword', methods=['POST'], name='report_keyword',
@@ -252,5 +252,5 @@ async def report_keyword(request: Request):
         await redis_delete_key(key)
     except Exception as e:
         logging.error("Error: " + str(e), stack_info=True)
-        return JSONResponse({"error": 'trace stack b1'}, status_code=501)
-    return RedirectResponse(url='/api/query/ole/keyword', status_code=308)
+        return JSONResponse({"error": 'trace stack b1'}, status_code=501, headers={"X-Error": str(e)})
+    return RedirectResponse(url='/api/query/ole/keyword', status_code=308, headers={"X-Info": "Cache Purged, please re-query"})
