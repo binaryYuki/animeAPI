@@ -3,7 +3,9 @@ import hashlib
 import json
 import logging
 import urllib
+import urllib.parse
 import uuid
+from typing import Optional
 
 from fake_useragent import UserAgent
 from httpx import AsyncClient
@@ -83,17 +85,16 @@ def _getRandomUserAgent():
 
 
 async def pushNotification(baseURL: str, msg: str, icon: str = '', click_url: str = '', is_passive: bool = False,
-                           headers=None):
+                           headers: Optional[dict] = None):
     """
     推送通知
-    :param baseURL: str
-    :param msg: str
-    :param icon: str
-    :param click_url: str
-    :param is_passive: bool
-    :param headers: dict
-    :param data: dict
-    :param log_data: dict -> {'push_id': str, 'push_receiver': str}
+    :param baseURL: 推送服务基础 URL
+    :param msg: 推送消息内容
+    :param icon: 图标 URL，可选
+    :param click_url: 点击跳转 URL，可选
+    :param is_passive: 是否被动推送（静默）
+    :param headers: 额外请求头，可选
+    :return: bool 是否推送成功
     """
     # url = https://api.day.app/uKeSrwm3ainGgn5SAmRyg9/{msg}?icon={icon}&url={url}&passive={is_passive}
     if headers is None:
@@ -118,25 +119,29 @@ async def pushNotification(baseURL: str, msg: str, icon: str = '', click_url: st
 
 # url 编码关键词
 def url_encode(keyword):
-    return urllib.parse.quote(keyword.encode())
+    # ensure str input and use urllib.parse.quote for encoding
+    if isinstance(keyword, bytes):
+        keyword = keyword.decode('utf-8', errors='ignore')
+    return urllib.parse.quote(str(keyword))
 
 
 async def generatePushTask(baseURL: str, msg: str, user_id: str, receiver: str, icon=None, click_url=None,
-                           is_passive=None, headers: dict = None, taskID: str = uuid.uuid4().hex,
+                           is_passive=None, headers: Optional[dict] = None, taskID: str = uuid.uuid4().hex,
                            push_receiver: str = "yuki", push_by: str = "system"):
     """
-    :param push_by:  推送者 默认为system
-    :param push_channel:  推送渠道 默认为bark
-    :param push_receiver: 用户email
-    :param taskID:  任务ID 默认为uuid
-    :param headers:  请求头
-    :param icon:  图标
-    :param user_id:  用户ID
-    :param msg:  消息
-    :param baseURL:  基础URL
-    :param click_url: 点击通知后跳转的URL
-    :param receiver: 接收者
-    :param is_passive: 是否被动推送 就是不会有声音
+    生成推送任务并暂存到 Redis 队列
+    :param baseURL: 推送服务基础 URL
+    :param msg: 推送消息内容
+    :param user_id: 用户 ID
+    :param receiver: 接收者标识
+    :param icon: 图标 URL，可选
+    :param click_url: 点击跳转 URL，可选
+    :param is_passive: 是否被动推送（静默）
+    :param headers: 请求头，可选
+    :param taskID: 任务 ID（默认随机）
+    :param push_receiver: 推送接收者（日志）
+    :param push_by: 推送发起者（日志）
+    :return: bool
     示例： generatePushTask("https://api.day.app/uKeSrwm3ainGgn5SAmRyg9/", "You have a new notification!", str(12345),
                            "https://example.com", False, None, None, None, uuid.uuid4().hex, "system",
                             "bark")

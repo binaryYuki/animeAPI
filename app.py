@@ -281,5 +281,7 @@ if __name__ == '__main__':
     import uvicorn
     import watchfiles
 
-    watchfiles.filters = ["*venv", "\\.env$"]
+    # Some versions of watchfiles don't expose a `filters` attribute; guard access.
+    if hasattr(watchfiles, 'filters'):
+        watchfiles.filters = ["*venv", "\\.env$"]
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -19,7 +19,8 @@ async def generateJWT(payload: dict):
     生成 JWT Token
     :return: str
     """
-    payload['exp'] = datetime.datetime.utcnow() + datetime.timedelta(hours=12)
+    # Use timezone-aware UTC datetime per deprecation guidance
+    payload['exp'] = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=12)
     return jwt.encode(payload, os.getenv('SESSION_SECRET'), algorithm="HS256")
 
 

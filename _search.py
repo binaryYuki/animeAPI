@@ -128,10 +128,14 @@ async def search(request: Request, background_tasks: BackgroundTasks):
     try:
         id = f"search_{keyword}_{page}_{size}_{datetime.datetime.now().strftime('%Y-%m-%d')}"
         if await redis_key_exists(id):
-            data = json.loads(await redis_get_key(id))
-            data["msg"] = "cached"
-            return JSONResponse(data)
+            cached = await redis_get_key(id)
+            if cached is not None:
+                cached_data = json.loads(cached)
+                if isinstance(cached_data, dict):
+                    cached_data["msg"] = "cached"
+                return JSONResponse(cached_data, status_code=200, headers={"X-Cache": "HIT" if "msg" in cached_data and cached_data["msg"] == "cached" else "MISS"})
     except Exception as e:
+        logging.info(f"Invalid Request: {data}, {e}")
         pass
     try:
         result = await search_api(keyword, page, size)
@@ -167,10 +171,12 @@ async def keyword(request: Request):
              "msg": "ok"}, status_code=200, headers={"X-Info": "Success"})
     redis_key = f"keyword_{datetime.datetime.now().strftime('%Y-%m-%d')}_{_keyword}"
     try:
-        if await redis_get_key(redis_key):
-            data = await redis_get_key(redis_key)
-            data = json.loads(data)
-            data["msg"] = "cached"
+        cached = await redis_get_key(redis_key)
+        if cached is not None:
+            parsed = json.loads(cached)
+            if isinstance(parsed, dict):
+                parsed["msg"] = "cached"
+            data = parsed
         else:
             data = await link_keywords(_keyword)
             await redis_set_key(redis_key, json.dumps(data), ex=86400)  # 缓存一天
