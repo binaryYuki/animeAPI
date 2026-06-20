@@ -23,7 +23,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from _auth import authRoute
 from _cronjobs import keerRedisAlive, pushTaskExecQueue
 from _crypto import cryptoRouter, init_crypto
-from _redis import get_keys_by_pattern, redis_client, set_key as redis_set_key
+from _memory_kv import get_memory_kv
+from _redis import get_keys_by_pattern, redis_client, set_key as redis_set_key, use_memory_kv
 from _search import searchRouter
 from _trend import trendingRoute
 
@@ -93,14 +94,30 @@ async def lifespan(_: FastAPI):
     整个 FastAPI 生命周期的上下文管理器
     :param _: FastAPI 实例
     :return: None
-    :param _:
-    :return:
     """
-    redis_connection = redis.from_url(
-        f"redis://default:{os.getenv('REDIS_PASSWORD', '')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}")
-    await FastAPILimiter.init(redis_connection)
-    if await redis_connection.ping():
-        logger.info("Redis connection established")
+    # 初始化内存 KV 存储
+    if use_memory_kv:
+        memory_kv = await get_memory_kv()
+        await memory_kv.start()
+        print("✓ Memory KV storage started")
+
+    # 初始化 Redis 或内存 KV 连接
+    if redis_client:
+        redis_connection = redis_client
+    else:
+        redis_connection = None
+
+    if redis_connection:
+        await FastAPILimiter.init(redis_connection)
+        if await redis_connection.ping():
+            logger.info("Redis connection established")
+    else:
+        # 内存 KV 模式下跳过 FastAPILimiter
+        try:
+            await FastAPILimiter.init(None)
+        except Exception:
+            logger.warning("FastAPILimiter not available in memory KV mode")
+
     await testPushServer()
     await registerInstance()
     print("Instance registered", instanceID)
@@ -108,8 +125,17 @@ async def lifespan(_: FastAPI):
     await keerRedisAlive()
     await init_crypto()
     yield
-    await FastAPILimiter.close()
-    await redis_client.connection_pool.disconnect()
+
+    # 清理资源
+    if use_memory_kv:
+        memory_kv = await get_memory_kv()
+        await memory_kv.stop()
+        print("✓ Memory KV storage stopped")
+
+    if redis_connection:
+        await FastAPILimiter.close()
+        await redis_connection.connection_pool.disconnect()
+
     print("Instance unregistered", instanceID)
     print("graceful shutdown")
 
@@ -192,14 +218,22 @@ async def healthz():
     :return:
     """
     try:
-        f = await redis_client.ping()
-        if f:
-            return JSONResponse(content={"status": "ok", "message": "Redis connection established"}, status_code=200)
+        if use_memory_kv:
+            memory_kv = await get_memory_kv()
+            if await memory_kv.ping():
+                return JSONResponse(content={"status": "ok", "message": "Memory KV storage is healthy"}, status_code=200)
+            else:
+                return JSONResponse(content={"status": "error", "error": "Memory KV storage failed code: 1000"},
+                                    status_code=500)
         else:
-            return JSONResponse(content={"status": "error", "error": "redis conection failed code: 1000"},
-                                status_code=500)
+            f = await redis_client.ping()
+            if f:
+                return JSONResponse(content={"status": "ok", "message": "Redis connection established"}, status_code=200)
+            else:
+                return JSONResponse(content={"status": "error", "error": "redis conection failed code: 1000"},
+                                    status_code=500)
     except Exception as e:
-        return JSONResponse(content={"status": "error", "error": f"redis conection failed code: 1001"}, status_code=500)
+        return JSONResponse(content={"status": "error", "error": f"Storage connection failed: {str(e)}"}, status_code=500)
 
 
 @app.middleware("http")
